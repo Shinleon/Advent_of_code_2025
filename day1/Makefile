@@ -1,7 +1,7 @@
 
 CC = gcc
 
-TARGET = main
+TARGET = main.out
 CFLAGS = -Wall -Wextra -Wpedantic -std=c11
 
 all: $(TARGET)
