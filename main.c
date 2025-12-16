@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define ZEROASCIIVAL (48)
 
@@ -52,12 +53,26 @@ void intConstructor_reset(struct intConstructor* ic) {
   ic-> nu_digits = 0;
 }
 
+// return the total of all invalids between
+long long intConstructor_findSumOfInvalids(struct intConstructor* lower, struct intConstructor* upper) {
+  // check if *lower is currently invalid (xyz|xyz) (two repeating sequences)
+  int return_flag = 0;
+  while(lower->nu_digits <= upper->nu_digits) {
+    bool possible = true;
+    while (possible) {
+      // god I need to figure this part out
+    }
+  }
+  return return_flag;
+}
+
 int main(void) {
   FILE* f = fopen("input.txt", "r");
   char c;
   struct intConstructor* upper = NULL;
   struct intConstructor* lower = NULL;
   struct intConstructor** current = &lower;
+  long long total = 0;
   while((c = fgetc(f)) != EOF) {
     if (c == '\n') {
       // nothing to do, end of file/line
@@ -68,6 +83,12 @@ int main(void) {
       intConstructor_reset(upper);
       current = &lower;
       printf("\t>>> end\n");
+      // we know the full range now.
+      // TODO: do some operation with upper and lower
+      // [abcd - wxyz]
+      // construct increase on lower
+      // check to make sure it's below upper
+      // if so, add it to total
     } else if (c == '-') {
       // start of range, set lower
       printf("\t>>> start\n");
@@ -80,5 +101,6 @@ int main(void) {
       *current = (intConstructor_attachDigit(*current, ((int)c) - ZEROASCIIVAL));
     }
   }
+  printf("total: %lld\n", total);
   return 0;
 }
