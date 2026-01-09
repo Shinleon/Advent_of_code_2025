@@ -81,7 +81,6 @@ struct PrimeGenerator* PrimeGenerator_nextPrime(struct PrimeGenerator* g) {
 struct PrimeGenerator* primeList = NULL;
 
 long long InvalidID_getIntRepresentation(struct InvalidID* id) {
-  // TODO : adjust by nu_reps
   long long result = 0;
   for(int i = 0; i < id->nu_reps; i++){
     result = result * (long long)pow(10, id->nu_digits) + id->phrase;
@@ -93,6 +92,7 @@ struct InvalidIDPossibilities* InvalidIDPossibilities_FromIC(struct intConstruct
   // we need to know how many digits are in lower
   // factorize no_digits, e.g. 12 digit no., needs 4 repetitions of 3 digits
   //                              && 3 repetitions of 4 digits
+  printf("calling function Poss from IC\n");
   while(primeList == NULL || primeList->length < PRIMELIMIT) {
     primeList = PrimeGenerator_nextPrime(primeList);
   }
@@ -108,24 +108,25 @@ struct InvalidIDPossibilities* InvalidIDPossibilities_FromIC(struct intConstruct
     // else start with 1*10^(nu_d/reps-1)
     // add to poss
     // increase nu_d until condition nu_d > upper->nu_digits
-    int* _t = malloc(sizeof(int)*PRIMELIMIT);
+    printf("nu_d: %d, upper d: %d\n", nu_d, upper->nu_digits);
+    int* _t = calloc(PRIMELIMIT, sizeof(int));
+    int _temp = nu_d;
     for (int i = 0; i < PRIMELIMIT; i++) {
-      while(nu_d != 1 && nu_d % primeList->contents[i] == 0) {
-        nu_d = nu_d / primeList->contents[i];
+      while(_temp != 1 && _temp % primeList->contents[i] == 0) {
+        _temp = _temp / primeList->contents[i];
         _t[i] += 1;
       }
     }
     for(int i = 0; i < PRIMELIMIT; i++) {
       if (_t[i] != 0) {
-        printf("%d, %d |", primeList->contents[i], _t[i]);
+        printf("factor: %d, power: %d |", primeList->contents[i], _t[i]);
       }
     }
     printf("\n");
     // we have the factorization in <_t> 
     // we can use that to gen possible Invalid ID's
     // TODO: each prime is a nu_reps, and quotient of lower->nu_digits/nu_reps = invalidId's->nu_digits
-  
-    //loop through <_t> and for each prime slot (2, 3, 5, 7, etc.) take all other prime factors
+    // loop through <_t> and for each prime slot (2, 3, 5, 7, etc.) take all other prime factors
     // and create the other option (repetitions, length of repetition) (12-> (3,4) (2, 6))
     for(int i = 0; i < PRIMELIMIT; i++) {
       if(_t[i] >= 1) {
@@ -135,7 +136,11 @@ struct InvalidIDPossibilities* InvalidIDPossibilities_FromIC(struct intConstruct
         printf("possibility: %d repetition of  %d digit(s).\n", repetitions, dpr);
         struct InvalidID* curr_id = poss->ids + poss->quant_ids;
         for(int _ic_idx = 0; _ic_idx < dpr; _ic_idx++) {
-          curr_id->phrase = curr_id->phrase * 10 + ((int)lower->char_rep[_ic_idx] - ZEROASCIIVAL);
+          if (dpr*repetitions == lower->nu_digits) {
+            curr_id->phrase = curr_id->phrase * 10 + ((int)lower->char_rep[_ic_idx] - ZEROASCIIVAL);
+          }else {
+            curr_id->phrase = curr_id->phrase *10 + (_ic_idx == 0 ? 1:0);
+          }
         }
         curr_id->nu_digits = dpr;
         curr_id->nu_reps = repetitions;
@@ -143,6 +148,7 @@ struct InvalidIDPossibilities* InvalidIDPossibilities_FromIC(struct intConstruct
           curr_id->phrase += 1;
         }
         poss->quant_ids += 1; // we've added one item to our poss struct
+        // TODO: add realloc so we can add more than 17 items(?)
       }
     }
     free(_t);
@@ -160,7 +166,10 @@ struct InvalidID* InvalidID_nextFromInvalidID(struct InvalidID* id) {
   return id;
 }
 
-void InvalidID_incrementPhrase(struct InvalidID* id) {
+
+// return 1 if we have reached all 9's and we shouldn't increment
+// return 0 if we have room to move up
+int InvalidID_incrementPhrase(struct InvalidID* id) {
   if (id->phrase != 0) {
     int x = id->phrase;
     bool allNines = true;
@@ -173,12 +182,13 @@ void InvalidID_incrementPhrase(struct InvalidID* id) {
       x = x/10;
     }
     if (allNines) {
-      id->nu_digits += 1;
+      return 1;
     }
   } else {
     id->nu_digits = 1;
   }
   id->phrase += 1;
+  return 0;
 }
 
 //  create a intConstructor or attach a Digit to one
@@ -241,17 +251,27 @@ int InvalidID_allSameDigit(struct InvalidID* id) {
   return (ret == -2 ? -1: ret);
 }
 
-// return the total of all invalids between
+// return the total of all invalids between the start of all possible Invalids in poss
+//  and the IC upper
  long long InvalidIDPossibilities_findSumOfInvalids(struct InvalidIDPossibilities* poss, struct intConstructor* upper) {
   // loop through poss and keep increasing phrase and acquiring invID_getIntRep to sum as long as 
   //   less than IC upper
   long long total = 0;
+  bool allSameDigitSeen[10];
+  int last_seen_length = 0;
   for(int i = 0; i < poss->quant_ids; i++){
     struct InvalidID* moving = poss->ids + i;
     long long _u = upper->num_rep;
     long long _m = InvalidID_getIntRepresentation(moving);
-    bool allSameDigitSeen[10];
-    while( _m < _u){
+    int new_length = moving->nu_digits*moving->nu_reps;
+    if (last_seen_length != new_length) {
+      for(int _j = 0; _j < 10; _j++) {
+        allSameDigitSeen[_j] = false;
+      }
+    }
+    last_seen_length = new_length; 
+    int result = 0;
+    while( _m <= _u && result == 0){
       int seen_digit = InvalidID_allSameDigit(moving);
       if (seen_digit == -1) {
         printf("\t\tadding in %lld, nu_digits: %d, reps: %d\n", _m, moving->nu_digits, moving->nu_reps);
@@ -265,7 +285,7 @@ int InvalidID_allSameDigit(struct InvalidID* id) {
           printf("\t\tskipping %lld\n", _m);
         }
       }
-      InvalidID_incrementPhrase(moving);
+      result = InvalidID_incrementPhrase(moving);
       _m = InvalidID_getIntRepresentation(moving);
     }
   }
@@ -287,8 +307,6 @@ int main(void) {
       if (lower->nu_digits != upper->nu_digits) {
         printf("\tthere is a digit change from %d to %d digits\n", lower->nu_digits, upper->nu_digits);
       }
-      // TODO Stuff to do here
-      // Factorize no_digits
       struct InvalidIDPossibilities* poss = InvalidIDPossibilities_FromIC(lower, upper);
       for(int i = 0; i < poss->quant_ids; i++) {
         printf("\t\tpossibility: %lld\n", InvalidID_getIntRepresentation(poss->ids+i));
