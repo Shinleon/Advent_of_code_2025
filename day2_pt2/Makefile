@@ -7,7 +7,7 @@ CFLAGS = -Wall -Wextra -Wpedantic -std=c11 -g
 all: $(TARGET)
 
 $(TARGET): main.c HashSet.c HashSet.h utils.c utils.h
-	$(CC) -o $(TARGET) $(CFLAGS) main.c HashSet.c utils.c
+	$(CC) -o $(TARGET) $(CFLAGS) main.c HashSet.c utils.c -lm
 
 .PHONY: HashSet.out
 HashSet.out: HashSet.c HashSet.h utils.c utils.h
