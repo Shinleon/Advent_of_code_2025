@@ -22,7 +22,11 @@ int main(void){
   while(std::getline(fileptr, line)) {
     auto split = line 
       | std::views::split(',')
-      | std::views::transform([](auto&& str) {return std::string_view(&*str.begin(), std::ranges::distance(str)); });
+      | std::views::transform(
+          [](auto&& str) {
+            return std::string_view(&*str.begin(), std::ranges::distance(str)); 
+            }
+        );
     std::tuple<int, int, int> insertable = std::make_tuple(0, 0, 0);
     for(auto&& item : split) {
       std::cout << item << " ";
